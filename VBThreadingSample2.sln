@@ -1,6 +1,6 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+
+Microsoft Visual Studio Solution File, Format Version 8
+
 Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "VBThreadingSample2", "VBThreadingSample2.vbproj", "{7A457A5E-15EC-4CF2-9A49-DA979D90A1C5}"
 EndProject
 Global

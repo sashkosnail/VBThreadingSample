@@ -7,7 +7,7 @@ Public Class Form1
     Dim buffers = {{0, 0}, {0, 0}}
 
     'Timeout Value
-    Const timeout As Integer = 2250
+    Const timeout As Integer = 50
 
     'Holding flags for camera communication timeouts
     Dim camera_timout = {False, False}
@@ -26,14 +26,14 @@ Public Class Form1
     'Error handling in the next two thread functions should be done through a memeber variable
 
     Private Sub CameraThreadfunc(ByVal iCamNumber As Integer)  'The integer identifier here should be replaced with the camera handle
-        Thread.Sleep(CInt(1500.0 + random_number.NextDouble * 1000.0))    'Suspend thread for a random time from 1.5 to 2.5s
+        Thread.Sleep(CInt(10 + random_number.NextDouble * 90))    'Suspend thread for a random time from 0.01 to 0.1s
         buffers(0, iCamNumber) += 1    'increment frame count in buffer used in display
         If random_number.NextDouble > 0.99 Then camera_error(iCamNumber) = "ERROR"
     End Sub
 
     Private Sub ProcessThreadfunc(BufferID As Integer)
-        Thread.Sleep(CInt(100.0 + random_number.NextDouble * 150.0))    'Suspend thread for a random time from 0.1 to 0.25s
         process_result = (buffers(1, 0) + buffers(1, 1)) '* random_number.NextDouble
+        Thread.Sleep(CInt(100.0 + random_number.NextDouble * 150.0))    'Suspend thread for a random time from 0.1 to 0.25s
     End Sub
 
     Private Sub MainThreadfunc()
@@ -67,8 +67,19 @@ Public Class Form1
                 End If
 
                 'Wait for all started threads to finish before starting new iteration
-                If CameraThread1.IsAlive Then If CameraThread1.Join(timeout) Then camera_timout(0) = True
-                If CameraThread1.IsAlive Then If CameraThread2.Join(timeout) Then camera_timout(1) = True
+                If CameraThread1.IsAlive Then
+                    If Not CameraThread1.Join(timeout) Then
+                        camera_timout(0) = True
+                        CameraThread1.Abort()
+                    End If
+                End If
+
+                If CameraThread2.IsAlive Then
+                    If Not CameraThread2.Join(timeout) Then
+                        camera_timout(1) = True
+                        CameraThread2.Abort()
+                    End If
+                End If
 
                 If ProcessThread.IsAlive Then ProcessThread.Join()
 
@@ -98,15 +109,21 @@ Public Class Form1
 
     Private Sub UpdateUI()
         Try
-            T1.Text = buffers(0, 0).ToString
+            'Keep real execution counts
+            Static real_counts = {1, 1}
+
+            T1.Text = buffers(0, 0).ToString + "/" + real_counts(0).ToString
             If camera_timout(0) Then T1.BackColor = Color.Red Else T1.BackColor = SystemColors.Control
-            T2.Text = buffers(0, 1).ToString
+            T2.Text = buffers(0, 1).ToString + "/" + real_counts(0).ToString
             If camera_timout(1) Then T2.BackColor = Color.Red Else T2.BackColor = SystemColors.Control
 
             P.Text = process_result.ToString
 
             T1E.Text = camera_error(0)
             T2E.Text = camera_error(1)
+
+            real_counts(0) += 1
+            real_counts(1) += 1
         Catch ex As Exception
             MsgBox(ex.Message)
         End Try
@@ -125,6 +142,8 @@ Public Class Form1
             If mainThread.IsAlive Then mainThread.Join()
             mainThread = New Thread(AddressOf Me.MainThreadfunc)
             mainThread.IsBackground = True
+            'clear error states
+            camera_error = {"", ""}
             mainThread.Start()
         End If
     End Sub
